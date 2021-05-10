@@ -9,10 +9,14 @@
 #include <any>
 #include <memory>
 #include "tsMassert.h"
+#include "asmjit/x86.h"
+
+using namespace asmjit;
 
 namespace ts
 {
 	const std::string tsVersion = "0.0.0";
+
 
 	//bytecode commands:
 
@@ -45,7 +49,7 @@ namespace ts
 	// Define types for all types used by runtime, so they can be changed if needed, 
 	// espesially if diferent platforms have different varible sizes that could break the bytecode.
 	typedef unsigned int tsIndex;
-	typedef std::byte tsByte;
+	typedef unsigned char tsByte;
 	typedef std::int32_t tsInt;
 	typedef float tsFloat;
 	typedef bool tsBool;
@@ -59,7 +63,24 @@ namespace ts
 		tsBool
 	};
 
-	constexpr std::string_view getVarTypeName(tsVarType type)
+	class tsCompileError
+	{
+	public:
+		std::string message;
+		size_t line;
+		tsCompileError(const std::string& _message, size_t _line)
+		{
+			message = _message;
+			line = _line;
+		}
+		void display()
+		{
+			std::cout << "Compiler failed with message:\n" << message
+				<< "\nOn line:\n" << line << std::endl;
+		}
+	};
+
+	constexpr const char*  getVarTypeName(tsVarType type)
 	{
 		switch (type)
 		{
@@ -220,7 +241,7 @@ namespace ts
 	public:
 		std::string identifier;
 		           //Index          bytecode                 stack
-		void (*func)(tsIndex, const std::vector<std::byte>&, std::vector<std::byte>&);
+		void (*func)(tsIndex, const std::vector<tsByte>&, std::vector<tsByte>&);
 	};
 
 	class tsScript
@@ -263,7 +284,7 @@ namespace ts
 			cursor = 0;
 			stack.clear();
 			stack.setSize(_context->scripts[loadedScript].numBytes);
-			//ExecuteByteCode(_context->scripts[loadedScript].bytecode);
+			//CompileByteCode(_context->scripts[loadedScript].bytecode);
 			scriptLoaded = true;
 		}
 
@@ -327,13 +348,41 @@ namespace ts
 		{
 			std::cout << "Running script: " << loadedScript << " at cursor index: " << cursor << std::endl;
 			size_t start = cursor;
-			ExecuteByteCode(_context->scripts[loadedScript].bytecode);
+			CompileByteCode(_context->scripts[loadedScript].bytecode);
 			// Return the cursor to the start of the function after we complete it
 			cursor = start;
 		}
 
-		void ExecuteByteCode(const tsBytecode& bytecode)
+		typedef int (*tsjitFunc)(const tsInt* a, const tsInt* b);
+		void CompileByteCode(const tsBytecode& bytecode)
 		{
+			JitRuntime rt;
+			CodeHolder code;
+
+			code.init(rt.environment());
+			x86::Compiler cc(&code);
+			auto funcSign = FuncSignatureT<tsInt, const tsInt*, const tsInt*>(CallConv::kIdHost);
+			cc.addFunc(funcSign);
+			std::cout << "Function arguments: " << funcSign.argCount() << std::endl;
+			x86::Gp a = cc.newIntPtr("a");
+			x86::Gp b = cc.newIntPtr("b");
+
+			cc.setArg(0, a);
+			cc.setArg(1, b);
+			x86::Gp tmp = cc.newInt32("tmp");
+			cc.mov(tmp, x86::dword_ptr(a));
+			cc.add(tmp, x86::dword_ptr(b));
+			cc.ret(tmp);
+
+			cc.endFunc();
+			cc.finalize();
+			tsjitFunc fn;
+			Error err = rt.add(&fn, &code);
+			if (err)
+			{
+				throw tsCompileError("Function could not be compiled", 0);
+			}
+			
 			bool executing = true;
 			while (executing && cursor < bytecode.bytes.size())
 			{
@@ -441,12 +490,15 @@ namespace ts
 					break;
 					case tsADDI:
 					{
-						tsIndex a = bytecode.bytes.read<tsIndex>(++cursor);
+						tsIndex aIndex = bytecode.bytes.read<tsIndex>(++cursor);
 						cursor += sizeof(tsIndex);
-						tsIndex b = bytecode.bytes.read<tsIndex>(cursor);
+						tsIndex bIndex = bytecode.bytes.read<tsIndex>(cursor);
 						cursor += sizeof(tsIndex);
-						std::cout << "adding " << stack.read<tsInt>(a) << " + " << stack.read<tsInt>(b) << std::endl;
-						stack.set(a, stack.read<tsInt>(a) + stack.read<tsInt>(b));
+						std::cout << "adding " << stack.read<tsInt>(aIndex) << " + " << stack.read<tsInt>(bIndex) << std::endl;
+						// Test of jit compiled function
+						int a = stack.read<tsInt>(aIndex);
+						int b = stack.read<tsInt>(bIndex);
+						stack.set(aIndex, fn(&a, &b));
 						break;
 					}
 					case tsMULI:

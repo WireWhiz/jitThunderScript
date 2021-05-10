@@ -65,5 +65,8 @@ int main()
 
 
 	}
+	std::cout << "Press enter to close..." << std::endl;
+	int i;
+	std::cin >> i;
 	return 0;
 }

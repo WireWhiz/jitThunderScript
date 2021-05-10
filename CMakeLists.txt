@@ -3,17 +3,27 @@
 #
 cmake_minimum_required (VERSION 3.8)
 
-project ("jitThunderScript")
-set (CMAKE_CXX_STANDARD 17)
+project ("jitThunderScript" VERSION 0.0.0)
+set (CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-SET(GCC_COVERAGE_COMPILE_FLAGS "-std=c++17")
+file(GLOB_RECURSE SOURCES src/*.h src/*.cpp src/*.hh src/*.cc)
+add_compile_definitions(ASMJIT_STATIC)
 
-# Add source to this project's executable.
-include_directories(${PROJECT_SOURCE_DIR}/src)
-include_directories(${PROJECT_SOURCE_DIR}/src/bison)
-include_directories(${PROJECT_SOURCE_DIR}/scripts)
+include_directories(
+    src/bison
+    src/libjit
+)
 
-add_executable (jitThunderScript "jitThunderScript.cpp" "jitThunderScript.h" "src/bison/bison.tab.cc" "src/bison/lex.yy.cc" "src/ThunderScriptCompiler.cpp" )
+if (UNIX)
+    add_link_options(-lrt)
+endif (UNIX)
+
+add_executable (jitThunderScript "jitThunderScript.cpp"  ${SOURCES})
+
+target_include_directories(jitThunderScript PRIVATE ${YOUR_DIRECTORY}/src/bison)
+target_include_directories(jitThunderScript PRIVATE ${YOUR_DIRECTORY}/src/asmjit)
 
 file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/scripts
      DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

@@ -5,10 +5,7 @@
 #in bool e
 #in float f
 
-float tA;
-tA = 2.4f;
-int tB = 3;
+int tA = a;
+int tB = b;
 
-c = tA + tB + a + b + b + b + b + b + b + b + b;
-
-b = c + tA + tB + tB + b + b + c;
+c = tA + tB;

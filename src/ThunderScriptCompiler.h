@@ -2,7 +2,7 @@
 
 #ifndef TS_COMPILER
 #define TS_COMPILER
-#include "thunderscript.h"
+#include "ThunderScript.h"
 #include <string>
 #include <iostream>
 
@@ -14,22 +14,7 @@
 namespace ts
 {
 
-	class tsCompileError
-	{
-	public:
-		std::string message;
-		size_t line;
-		tsCompileError(const std::string& _message, size_t _line)
-		{
-			message = _message;
-			line = _line;
-		}
-		void display()
-		{
-			std::cout << "Compiler failed with message:\n" << message
-				<< "\nOn line:\n" << line << std::endl;
-		}
-	};
+	
 
 	struct tsVar
 	{

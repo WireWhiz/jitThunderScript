@@ -11,13 +11,13 @@
 #include <unordered_map>
 
 #include "ThunderScript.h"
-#include "thunderScriptCompiler.h"
+#include "ThunderScriptCompiler.h"
 #include "bison/bison.tab.hh"
 
 #if ! defined(yyFlexLexerOnce)
 #endif
-#include <FlexLexer.h>
-#include "location.hh"
+#include "bison/FlexLexer.h"
+#include "bison/location.hh"
 
 
 namespace ts
@@ -34,7 +34,7 @@ namespace ts
 		}
 	};
 
-	std::unordered_map<tsVarTypePair, std::byte, tsVarTypePairHash> tsVarCastCodes = {
+	std::unordered_map<tsVarTypePair, tsByte, tsVarTypePairHash> tsVarCastCodes = {
 		{{tsVarType::tsInt, tsVarType::tsFloat}, tsItoF},
 		{{tsVarType::tsFloat, tsVarType::tsInt}, tsFtoI}
 	};
@@ -505,7 +505,7 @@ namespace ts
 			a = result;
 		}
 		exitScope();
-		std::byte code;
+		tsByte code;
 		switch (type)
 		{
 			case tsVarType::tsFloat:
@@ -546,7 +546,7 @@ namespace ts
 		castVar(b, type, line);
 		tsVar result = vars.requestTempVar(type, line);
 		exitScope();
-		std::byte code;
+		tsByte code;
 		switch (type)
 		{
 			case tsVarType::tsFloat:
